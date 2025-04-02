@@ -18,26 +18,9 @@ private extension CoinDataService {
             return
         }
         
-        coinSubscription = URLSession.shared.dataTaskPublisher(for: url)
-            .subscribe(on: DispatchQueue.global(qos: .default))
-            .tryMap({ (output) -> Data in
-                guard let resonse = output.response as? HTTPURLResponse,
-                      resonse.statusCode >= 200 && resonse.statusCode <= 300 else {
-                    throw URLError(.badServerResponse)
-                }
-                
-                return output.data
-            })
-            .receive(on: DispatchQueue.main)
+        coinSubscription = NetworkingManager.download(url: url)
             .decode(type: [Coin].self, decoder: JSONDecoder())
-            .sink(receiveCompletion: { completion in
-                switch completion {
-                case .failure(let error):
-                    print(error.localizedDescription)
-                case .finished:
-                    break
-                }
-            }, receiveValue: { [weak self] coins in
+            .sink(receiveCompletion: NetworkingManager.handleCompletion, receiveValue: { [weak self] coins in
                 self?.allCoins = coins
                 self?.coinSubscription?.cancel()
             })
